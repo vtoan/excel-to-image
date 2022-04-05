@@ -5,7 +5,6 @@ import sys
 from typing import List
 from PIL import ImageGrab
 import win32com.client
-import win32clipboard
 from PySide6 import QtCore
 from PySide6.QtWidgets import (
     QApplication,
@@ -13,9 +12,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QFormLayout,
     QPushButton,
-    QLineEdit, QFileDialog,
-    QLabel
+    QLineEdit,
+    QFileDialog,
+    QMessageBox
 )
+from ctypes import windll
 
 
 class ExcellOptions:
@@ -61,17 +62,14 @@ class MainWidget(QWidget):
 
         self.filePathControl = QLineEdit()
 
-        btnSubmit = QPushButton("Excute!")
+        btnSubmit = QPushButton("Execute!")
         btnFileBrowser = QPushButton("File Browser")
-
-        self.textMsg = QLabel("")
 
         formLayout.setHorizontalSpacing(30)
         formLayout.addRow("File Path", self.filePathControl)
         formLayout.addWidget(btnFileBrowser)
 
         container.addLayout(formLayout)
-        container.addWidget(self.textMsg)
         container.addWidget(btnSubmit)
         self.setLayout(container)
 
@@ -106,6 +104,7 @@ class MainWidget(QWidget):
         workSheet.Range(options.printRange).Copy()
 
         roomName = workSheet.Range(options.roomNameCell).Value
+
         # saving
         img = ImageGrab.grabclipboard()
         img.save(imageFolderName + "/" + options.sheetName +
@@ -114,7 +113,6 @@ class MainWidget(QWidget):
     def Export(self, options: ExcellOptions):
         appName = "Excel.Application"
         xlsApp = win32com.client.gencache.EnsureDispatch(appName)
-        ###
         workBook = xlsApp.Workbooks.Open(Filename=options.fileName)
         try:
             xlsApp.DisplayAlerts = False
@@ -131,34 +129,44 @@ class MainWidget(QWidget):
                 mkdir(imageFolderName)
 
             # save images
-            win32clipboard.OpenClipboard()
-            win32clipboard.EmptyClipboard()
-            win32clipboard.CloseClipboard()
             for i in range(1, maxValue, increaseStep):
                 self.SaveToImage(workSheet, i, imageFolderName, options)
+                if windll.user32.OpenClipboard(None):
+                    windll.user32.EmptyClipboard()
+                    windll.user32.CloseClipboard()
 
             workBook.Close(False)
             xlsApp.Application.Quit()
-            self.textMsg.setText("Export successfully!.")
-            self.textMsg.setStyleSheet(
-                "color:#008000; font-size: 12pt; text-transform: uppercase; font-weight: bold")
+
+            # show message
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Success")
+            msg.setText("Export successfully!.")
+            msg.exec()
+
             print("DONE.")
 
         except Exception as ex:
-            self.textMsg.setText("Has error when export!.")
-            self.textMsg.setStyleSheet(
-                "color:#FF0000; font-size: 12pt; text-transform: uppercase; font-weight: bold")
-            print("Has error when export!.")
-            print(ex)
             workBook.Close(False)
             xlsApp.Application.Quit()
+
+            # show message
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setWindowTitle("Error")
+            msg.setText(str(ex))
+            msg.exec()
+
+            print("Has error when export!.")
+            print(ex)
 
 
 if __name__ == "__main__":
     app = QApplication([])
 
     widget = MainWidget()
-    widget.resize(600, 400)
+    widget.resize(400, 400)
     widget.show()
 
     sys.exit(app.exec())
