@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QMessageBox
 )
-from ctypes import windll
 
 
 class ExcellOptions:
@@ -85,7 +84,7 @@ class MainWidget(QWidget):
     @QtCore.Slot()
     def browserFile(self):
         filepath = QFileDialog.getOpenFileName(
-            self, "Open Song", "~", "Excel Files (*.xlsm *.xlsx)")[0]
+            self, "Open Excel file", "~", "Excel Files (*.xlsm *.xlsx)")[0]
         self.filePathControl.setText(filepath)
 
     def getFormValue(self, controls: List[FormControl]):
@@ -131,9 +130,6 @@ class MainWidget(QWidget):
             # save images
             for i in range(1, maxValue, increaseStep):
                 self.SaveToImage(workSheet, i, imageFolderName, options)
-                if windll.user32.OpenClipboard(None):
-                    windll.user32.EmptyClipboard()
-                    windll.user32.CloseClipboard()
 
             workBook.Close(False)
             xlsApp.Application.Quit()
